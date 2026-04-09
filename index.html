@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lean Force — Think Less. Force More.</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #ffffff;
+  overflow: hidden;
+  font-family: 'Helvetica Neue', 'Hiragino Sans', 'Yu Gothic', Arial, sans-serif;
+}
+
+#bg-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  z-index: 0;
+}
+
+.ui {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* ── ロゴ ── */
+.logo {
+  position: absolute;
+  top: 44px; left: 56px;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #111;
+  transition: color 0.2s;
+}
+.logo em { font-style: normal; color: #0055ff; transition: color 0.2s; }
+
+/* ── テーマラベル（右上） ── */
+.theme-tag {
+  position: absolute;
+  top: 50px; right: 56px;
+  font-size: 10px;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: transparent;
+  transition: color 0.3s;
+}
+
+/* ── メインキャッチ ── */
+.hero {
+  text-align: center;
+  pointer-events: none;
+}
+.hero-title {
+  font-size: clamp(48px, 8.5vw, 96px);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.0;
+  color: #111;
+  transition: color 0.2s;
+}
+.hero-sub {
+  margin-top: 14px;
+  font-size: clamp(12px, 1.5vw, 16px);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #999;
+  transition: color 0.2s;
+}
+
+/* ── 質問 + ボタン群 ── */
+.qa-block {
+  margin-top: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  pointer-events: all;
+}
+
+.question {
+  font-size: clamp(22px, 3vw, 28px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #111;
+  transition: color 0.2s;
+}
+
+.choices {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px 28px 16px;
+  width: 130px;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
+  background: transparent;
+  text-align: center;
+  transition: border-color 0.12s, background 0.12s, transform 0.1s, box-shadow 0.12s;
+}
+.choice:hover {
+  border-color: #333;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.09);
+}
+.choice.active {
+  border-color: #111;
+  background: #111;
+}
+
+/* 英単語 — 大きく・太く */
+.choice-word {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #111;
+  transition: color 0.12s;
+}
+/* 日本語 — 小さく・薄く */
+.choice-ja {
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: #bbb;
+  transition: color 0.12s;
+  line-height: 1.5;
+}
+
+.choice.active .choice-word { color: #fff; }
+.choice.active .choice-ja   { color: rgba(255,255,255,0.45); }
+
+/* リセットボタン */
+.reset-btn {
+  display: none;
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  pointer-events: all;
+  transition: color 0.15s;
+}
+.reset-btn:hover { color: rgba(255,255,255,0.75); }
+
+/* ── Active theme overrides ── */
+.ui.on .logo        { color: #fff; }
+.ui.on .logo em     { color: rgba(140,190,255,0.9); }
+.ui.on .theme-tag   { color: rgba(255,255,255,0.4); }
+.ui.on .hero-title  { color: #fff; }
+.ui.on .hero-sub    { color: rgba(255,255,255,0.45); }
+.ui.on .question    { color: rgba(255,255,255,0.9); }
+.ui.on .choice {
+  border-color: rgba(255,255,255,0.2);
+}
+.ui.on .choice:hover {
+  border-color: rgba(255,255,255,0.65);
+  background: rgba(255,255,255,0.08);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.25);
+}
+.ui.on .choice.active {
+  border-color: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.12);
+}
+.ui.on .choice .choice-word { color: rgba(255,255,255,0.9); }
+.ui.on .choice .choice-ja   { color: rgba(255,255,255,0.3); }
+.ui.on .choice.active .choice-word { color: #fff; }
+.ui.on .choice.active .choice-ja   { color: rgba(255,255,255,0.5); }
+.ui.on .reset-btn { display: inline-block; }
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<div class="ui" id="ui">
+  <div class="logo">Lean<em>Force</em></div>
+  <div class="theme-tag" id="theme-tag"></div>
+
+  <div class="hero">
+    <h1 class="hero-title">Think Less.<br>Force More.</h1>
+    <p class="hero-sub">IT Strategy · Execution · Scale</p>
+  </div>
+
+  <div class="qa-block">
+    <p class="question">今、必要な Force は？</p>
+
+    <div class="choices">
+      <button class="choice" data-theme="security">
+        <span class="choice-word">Security</span>
+        <span class="choice-ja">守り固める</span>
+      </button>
+      <button class="choice" data-theme="speed">
+        <span class="choice-word">Speed</span>
+        <span class="choice-ja">今すぐ加速する</span>
+      </button>
+      <button class="choice" data-theme="scale">
+        <span class="choice-word">Scale</span>
+        <span class="choice-ja">大きく広げる</span>
+      </button>
+      <button class="choice" data-theme="future">
+        <span class="choice-word">Future</span>
+        <span class="choice-ja">根本から変える</span>
+      </button>
+    </div>
+
+    <button class="reset-btn" id="reset-btn">← 選び直す</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+// ================================================================
+// LEAN FORCE — First View Prototype
+// Three.js + GLSL Shader Engine
+// ================================================================
+
+const canvas = document.getElementById('bg-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+const scene = new THREE.Scene();
+const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+const uniforms = {
+  uTime:       { value: 0.0 },
+  uRes:        { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+  uTransition: { value: 0.0 },
+  uTheme:      { value: 0 },   // 0=security 1=speed 2=scale 3=future
+  uPrevTheme:  { value: -1 },
+};
+
+// ================================================================
+// VERTEX SHADER
+// ================================================================
+const vert = /* glsl */`
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = vec4(position.xy, 0.0, 1.0);
+}
+`;
+
+// ================================================================
+// FRAGMENT SHADER
+// ================================================================
+const frag = /* glsl */`
+precision highp float;
+varying vec2 vUv;
+
+uniform float uTime;
+uniform vec2  uRes;
+uniform float uTransition;
+uniform int   uTheme;
+
+// ---- Utility ----
+float hash11(float p) {
+  p = fract(p * 0.1031);
+  p *= p + 33.33;
+  p *= p + p;
+  return fract(p);
+}
+float hash21(vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+float noise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  f = f*f*(3.0-2.0*f);
+  float a = hash21(i), b = hash21(i+vec2(1,0));
+  float c = hash21(i+vec2(0,1)), d = hash21(i+vec2(1,1));
+  return mix(mix(a,b,f.x), mix(c,d,f.x), f.y);
+}
+float fbm(vec2 p) {
+  float v=0.0, a=0.5;
+  for(int i=0;i<5;i++){v+=noise(p)*a; p*=2.1; a*=0.5;}
+  return v;
+}
+
+// ================================================================
+// THEME 0: SECURITY — Blue geometric grid network
+// ================================================================
+vec3 themeSecurity(vec2 uv) {
+  float t = uTime;
+  vec2 center = vec2(0.5);
+
+  // --- Primary hexagonal grid ---
+  float hScale = 10.0;
+  vec2 hp = uv * hScale;
+  hp.x += hp.y * 0.5;
+  vec2 hCell = fract(hp) - 0.5;
+  float hd = max(abs(hCell.x)*1.732 + abs(hCell.y), abs(hCell.y)*2.0)*0.5;
+  float hexLine = smoothstep(0.03, 0.0, abs(hd - 0.48)) * 0.6;
+
+  // --- Cartesian grid ---
+  float gScale = 16.0;
+  vec2 gp = uv * gScale;
+  vec2 gc = fract(gp);
+  vec2 gid = floor(gp);
+  float gx = smoothstep(0.025, 0.0, min(gc.x, 1.0-gc.x));
+  float gy = smoothstep(0.025, 0.0, min(gc.y, 1.0-gc.y));
+  float grid = max(gx, gy) * 0.4;
+
+  // --- Animated data packets flowing along grid ---
+  float flow = 0.0;
+  float fspeed = t * 0.8;
+  float fx = fract(gc.x - fspeed + hash21(gid * vec2(1.3,2.7)) * 5.0);
+  float fy = fract(gc.y - fspeed + hash21(gid * vec2(2.1,0.9)) * 5.0);
+  flow += smoothstep(0.06, 0.0, abs(fx - 0.5)) * gy * 2.5;
+  flow += smoothstep(0.06, 0.0, abs(fy - 0.5)) * gx * 2.5;
+
+  // --- Node pulses at intersections ---
+  float nodes = 0.0;
+  float nScale = 8.0;
+  vec2 np = uv * nScale;
+  vec2 nid = floor(np + 0.5);
+  if(hash21(nid) > 0.55) {
+    vec2 npos = nid / nScale;
+    float nd = length(uv - npos);
+    float pulse = sin(t * 2.5 + hash21(nid) * 6.28) * 0.5 + 0.5;
+    nodes += smoothstep(0.018, 0.0, nd) * (0.6 + pulse * 0.4);
+    nodes += smoothstep(0.055, 0.030, nd) * pulse * 0.35;
+  }
+
+  // --- Background depth ---
+  float dist = length(uv - center);
+  vec3 bg = mix(vec3(0.02, 0.06, 0.22), vec3(0.0, 0.01, 0.08), smoothstep(0.0, 0.9, dist));
+
+  // --- Compose ---
+  vec3 col  = bg;
+  col += vec3(0.05, 0.35, 1.0)  * hexLine;
+  col += vec3(0.08, 0.45, 0.95) * grid;
+  col += vec3(0.2,  0.85, 1.0)  * flow;
+  col += vec3(0.5,  0.95, 1.0)  * nodes;
+
+  // Vignette tighten
+  col *= 1.0 - dist * 0.6;
+  return col;
+}
+
+// ================================================================
+// THEME 1: SPEED — Red radial particle burst
+// ================================================================
+vec3 themeSpeed(vec2 uv) {
+  float t = uTime;
+  vec2 center = vec2(0.5);
+  float asp = uRes.x / uRes.y;
+  vec2 p = uv - center;
+  p.x *= asp;
+  float dist = length(p);
+  float angle = atan(p.y, p.x);
+
+  // Background
+  vec3 bg = mix(vec3(0.25, 0.0, 0.0), vec3(0.0), smoothstep(0.0, 0.8, dist));
+
+  // --- Radial streak particles ---
+  float streaks = 0.0;
+  float headGlow = 0.0;
+
+  for(int i = 0; i < 64; i++) {
+    float fi = float(i);
+    float pAngle = fi / 64.0 * 6.28318 + hash11(fi * 0.137) * 0.5;
+    float spd    = 0.25 + hash11(fi * 0.271) * 0.6;
+    float phase  = fract(t * spd * 0.45 + hash11(fi * 0.613));
+    float len    = 0.07 + hash11(fi * 0.419) * 0.18;
+
+    float r  = phase * 0.85;
+    float r0 = max(0.0, r - len);
+
+    // Angular distance
+    float da = angle - pAngle;
+    da = atan(sin(da), cos(da));
+    float aWidth = (0.012 + hash11(fi * 0.557) * 0.008) / max(dist * 2.5, 0.3);
+
+    float inRadial  = step(r0, dist) * step(dist, r);
+    float inAngular = smoothstep(aWidth, 0.0, abs(da));
+    float fade      = (1.0 - phase * 0.7) * (0.4 + hash11(fi * 0.331) * 0.6);
+
+    streaks += inRadial * inAngular * fade;
+
+    // Head dot
+    vec2 headPos = vec2(cos(pAngle), sin(pAngle)) * r;
+    float hd = length(p - headPos);
+    headGlow += smoothstep(0.009, 0.0, hd) * fade * 2.0;
+  }
+
+  // Central explosion
+  float boom  = exp(-dist * 9.0) * (0.6 + 0.4 * sin(t * 18.0));
+  float bloom = exp(-dist * 2.5) * 0.25;
+
+  vec3 col = bg;
+  vec3 sColor = mix(vec3(1.0, 0.08, 0.0), vec3(1.0, 0.75, 0.1), clamp(streaks * 0.5, 0.0, 1.0));
+  col += sColor * min(streaks, 2.0);
+  col += vec3(1.0, 0.85, 0.5) * headGlow;
+  col += vec3(1.0, 0.35, 0.05) * (boom + bloom);
+  return col;
+}
+
+// ================================================================
+// THEME 2: SCALE — Green organic terrain contours
+// ================================================================
+vec3 themeScale(vec2 uv) {
+  float t = uTime;
+
+  // Slowly drifting noise terrain
+  vec2 p = uv + vec2(t * 0.025, t * 0.012);
+  float e  = fbm(p * 2.8);
+  float e2 = fbm(p * 6.5 + vec2(3.1, 1.7)) * 0.25;
+  float elev = e + e2;
+
+  // Contour lines
+  float cFreq = 14.0;
+  float c = fract(elev * cFreq);
+  float contour = smoothstep(0.04, 0.0, min(c, 1.0-c));
+
+  // Ridge glow
+  float ridge = exp(-abs(elev - 0.62) * 20.0) * 0.6;
+
+  // Elevation color ramp
+  vec3 col0 = vec3(0.0,  0.10, 0.03);  // deep valley
+  vec3 col1 = vec3(0.02, 0.30, 0.09);
+  vec3 col2 = vec3(0.05, 0.58, 0.18);
+  vec3 col3 = vec3(0.15, 0.82, 0.30);
+  vec3 col4 = vec3(0.55, 1.00, 0.55);  // peak
+
+  vec3 terrain;
+  if(elev < 0.25)      terrain = mix(col0, col1, elev/0.25);
+  else if(elev < 0.50) terrain = mix(col1, col2, (elev-0.25)/0.25);
+  else if(elev < 0.72) terrain = mix(col2, col3, (elev-0.50)/0.22);
+  else                 terrain = mix(col3, col4, (elev-0.72)/0.28);
+
+  // Contour overlay
+  vec3 col = mix(terrain, vec3(0.35, 1.0, 0.45), contour * 0.65);
+
+  // Ridge highlight
+  col += vec3(0.1, 0.9, 0.25) * ridge;
+
+  // Subtle scan shimmer
+  float scan = sin(uv.y * 180.0 + t * 2.0) * 0.015;
+  col += scan;
+
+  // Vignette
+  float vg = length(uv - 0.5);
+  col *= 1.0 - vg * 0.45;
+
+  return col;
+}
+
+// ================================================================
+// THEME 3: FUTURE — Purple/cyan quantum interference field
+// ================================================================
+vec3 themeFuture(vec2 uv) {
+  float t = uTime;
+  vec2 center = vec2(0.5);
+  float dist = length(uv - center);
+
+  // --- Interference wave field ---
+  float w1 = sin(length(uv - vec2(0.3, 0.4)) * 40.0 - t * 4.0);
+  float w2 = sin(length(uv - vec2(0.7, 0.6)) * 35.0 - t * 3.2);
+  float w3 = sin(length(uv - vec2(0.5, 0.2)) * 30.0 - t * 5.0);
+  float interference = (w1 + w2 + w3) / 3.0;
+
+  // --- Hex grid ---
+  float hScale = 12.0;
+  vec2 hp = uv * hScale;
+  hp.x += hp.y * 0.577;
+  vec2 hc = fract(hp) - 0.5;
+  float hd = max(abs(hc.x)*1.732 + abs(hc.y), abs(hc.y)*2.0)*0.5;
+  float hexLine = smoothstep(0.025, 0.0, abs(hd - 0.48));
+
+  // Animate hex brightness by interference
+  hexLine *= (0.5 + interference * 0.5);
+
+  // --- Digital rain columns ---
+  float rain = 0.0;
+  for(int i = 0; i < 22; i++) {
+    float fi = float(i);
+    float xBase = fi / 22.0;
+    float spd = 0.2 + hash11(fi * 0.431) * 0.5;
+    float off = hash11(fi * 0.827) * 8.0;
+    float streak = fract(-t * spd + off + uv.y * 2.5);
+    float xDist = abs(uv.x - xBase);
+    rain += smoothstep(0.025, 0.0, xDist) * smoothstep(0.25, 0.0, streak) * streak;
+  }
+
+  // --- Pulsing core ---
+  float corePulse = sin(t * 3.5) * 0.5 + 0.5;
+  float core = exp(-dist * 5.0) * corePulse;
+  float halo = exp(-dist * 1.8) * 0.3;
+
+  // Background
+  vec3 bg = mix(vec3(0.04, 0.0, 0.14), vec3(0.0, 0.02, 0.10), smoothstep(0.0, 0.9, dist));
+
+  vec3 col = bg;
+  col += vec3(0.0, 0.9, 1.0)  * hexLine * 0.55;
+  col += vec3(0.5, 0.0, 1.0)  * (rain * 0.8);
+  col += vec3(0.85, 0.2, 1.0) * core;
+  col += vec3(0.3,  0.1, 0.9) * halo;
+
+  // Interference color flash
+  float iAbs = abs(interference);
+  col += vec3(0.0, 0.6, 1.0) * iAbs * 0.12;
+  col += vec3(0.6, 0.0, 1.0) * max(0.0, interference) * 0.08;
+
+  col *= 1.0 - dist * 0.5;
+  return col;
+}
+
+// ================================================================
+// MAIN
+// ================================================================
+void main() {
+  vec2 uv = vUv;
+  float t = uTransition;
+
+  // Radial shockwave reveal from center
+  float d = length(uv - 0.5) * 1.42; // normalize so corners = 1.0
+  float reveal = smoothstep(d - 0.04, d + 0.04, t);
+
+  // Leading-edge shockwave flash
+  float ring = smoothstep(0.06, 0.0, abs(d - t)) * (1.0 - t) * 3.0;
+
+  vec3 theme;
+  if(uTheme == 0)      theme = themeSecurity(uv);
+  else if(uTheme == 1) theme = themeSpeed(uv);
+  else if(uTheme == 2) theme = themeScale(uv);
+  else                 theme = themeFuture(uv);
+
+  theme += ring;
+
+  vec3 white = vec3(1.0);
+  vec3 final = mix(white, theme, reveal);
+
+  gl_FragColor = vec4(final, 1.0);
+}
+`;
+
+// ================================================================
+// Setup mesh
+// ================================================================
+const geo = new THREE.PlaneGeometry(2, 2);
+const mat = new THREE.ShaderMaterial({ vertexShader: vert, fragmentShader: frag, uniforms });
+scene.add(new THREE.Mesh(geo, mat));
+
+// ================================================================
+// State & transitions
+// ================================================================
+const THEMES = { security: 0, speed: 1, scale: 2, future: 3 };
+const TRANSITION_MS = 140;
+
+
+let activeTheme = null;
+let transStart = 0;
+
+function activateTheme(name) {
+  const id = THEMES[name];
+  if (id === undefined) return;
+
+  uniforms.uTheme.value = id;
+  uniforms.uTransition.value = 0.0;
+  transStart = performance.now();
+  activeTheme = name;
+
+  const ui = document.getElementById('ui');
+  ui.classList.add('on');
+  document.getElementById('theme-tag').textContent = name.toUpperCase();
+}
+
+function resetTheme() {
+  activeTheme = null;
+  uniforms.uTransition.value = 0.0;
+  document.getElementById('ui').classList.remove('on');
+  document.getElementById('theme-tag').textContent = '';
+}
+
+// ================================================================
+// Input — choice buttons
+// ================================================================
+let activeChoice = null;
+
+document.querySelectorAll('.choice').forEach(btn => {
+  btn.addEventListener('click', () => {
+    // 選択状態をリセット
+    document.querySelectorAll('.choice').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeChoice = btn;
+    activateTheme(btn.dataset.theme);
+  });
+});
+
+document.getElementById('reset-btn').addEventListener('click', () => {
+  document.querySelectorAll('.choice').forEach(b => b.classList.remove('active'));
+  activeChoice = null;
+  resetTheme();
+});
+
+// ================================================================
+// Render loop
+// ================================================================
+let prevT = performance.now();
+
+(function loop(now) {
+  requestAnimationFrame(loop);
+
+  const dt = (now - prevT) / 1000;
+  prevT = now;
+  uniforms.uTime.value += dt;
+
+  if (activeTheme !== null) {
+    const raw = Math.min((now - transStart) / TRANSITION_MS, 1.0);
+    // Explosive cubic ease-out
+    uniforms.uTransition.value = 1.0 - Math.pow(1.0 - raw, 3);
+  }
+
+  renderer.render(scene, camera);
+})(prevT);
+
+// ================================================================
+// Resize
+// ================================================================
+window.addEventListener('resize', () => {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  uniforms.uRes.value.set(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
