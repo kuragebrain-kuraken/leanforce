@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lean Force</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #fff;
+  overflow-x: hidden;
+  overflow-y: auto;
+  width: 100vw;
+  min-height: 100vh;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.ui {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* ── Header ── */
+.header {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  padding: 32px 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  pointer-events: all;
+  cursor: pointer;
+  text-decoration: none;
+}
+.logo svg { width: 22px; height: 22px; }
+.logo-text {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #111;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+.nav-lang {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: #aaa;
+  cursor: pointer;
+  pointer-events: all;
+  transition: color 0.2s;
+}
+.nav-lang:hover { color: #111; }
+
+.nav-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 4px);
+  gap: 3.5px;
+  cursor: pointer;
+  pointer-events: all;
+}
+.nav-grid span {
+  display: block;
+  width: 4px; height: 4px;
+  background: #444;
+}
+
+/* ── Hero ── */
+.hero {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -55%);
+  text-align: center;
+  pointer-events: all;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.hero-title {
+  font-size: clamp(64px, 11vw, 128px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: #111;
+  line-height: 1;
+}
+
+/* ── Sub-links (invisible until hovered/targeted) ── */
+.sub-links {
+  position: absolute;
+  top: 50%;
+  transform: translateY(60px);
+  left: 0; right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 48px;
+}
+.sub-link {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ccc;
+  cursor: pointer;
+  pointer-events: all;
+  transition: color 0.2s;
+}
+.sub-link:hover { color: #666; }
+
+/* ── Footer ── */
+.footer {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 28px 44px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.status {
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  color: #bbb;
+  text-transform: uppercase;
+  cursor: pointer;
+  pointer-events: all;
+}
+.status sup { font-size: 7px; }
+.latency {
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  color: #ccc;
+  cursor: pointer;
+  pointer-events: all;
+}
+.scroll-cue {
+  position: absolute;
+  left: 50%;
+  bottom: 26px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: #8a8a8a;
+  pointer-events: all;
+  cursor: pointer;
+  transition: color 0.2s, transform 0.2s;
+}
+.scroll-cue::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border-left: 1.2px solid currentColor;
+  border-bottom: 1.2px solid currentColor;
+  transform: rotate(-45deg) translateY(-1px);
+}
+.scroll-cue:hover {
+  color: #111;
+  transform: translateX(-50%) translateY(2px);
+}
+
+/* ── About section (scroll area) ── */
+.about-section {
+  min-height: 100vh;
+  padding: 120px 44px 100px;
+  display: grid;
+  grid-template-columns: minmax(220px, 420px) 1fr;
+  gap: 44px;
+  align-items: start;
+}
+.about-kicker {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #777;
+  margin-bottom: 18px;
+}
+.about-title {
+  font-size: clamp(30px, 5.2vw, 68px);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  color: #111;
+  margin-bottom: 14px;
+}
+.about-lead {
+  font-size: clamp(14px, 1.3vw, 18px);
+  line-height: 1.7;
+  color: #555;
+  max-width: 560px;
+}
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 18px;
+}
+.about-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.about-card {
+  border: 1px solid #ececec;
+  border-radius: 16px;
+  padding: 22px 20px 20px;
+  background: #fff;
+  pointer-events: all;
+  cursor: pointer;
+}
+.about-card-title {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #333;
+  margin-bottom: 12px;
+}
+.about-card-text {
+  font-size: 14px;
+  line-height: 1.65;
+  color: #666;
+}
+.about-contact {
+  align-self: center;
+  margin-top: 44px;
+  padding: 12px 32px;
+  border: 1px solid #111;
+  border-radius: 999px;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: #111;
+  background: #fff;
+  pointer-events: all;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+.about-contact:hover {
+  background: #111;
+  color: #fff;
+}
+@media (max-width: 900px) {
+  .about-section {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .about-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div class="ui">
+
+  <header class="header">
+    <a class="logo" data-id="logo" href="#">
+      <!-- Diamond logo -->
+      <svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M11 1L21 11L11 21L1 11Z" stroke="#111" stroke-width="1.4" fill="none"/>
+        <path d="M11 5.5L16.5 11L11 16.5L5.5 11Z" fill="#111"/>
+      </svg>
+      <span class="logo-text">Lean Force</span>
+    </a>
+
+    <nav class="nav">
+      <span class="nav-lang" data-id="lang-jpn">Jpn</span>
+      <span class="nav-lang" data-id="lang-eng">Eng</span>
+      <span class="nav-lang" data-id="lang-rus">Rus</span>
+      <span class="nav-lang" data-id="lang-chs">Chs</span>
+      <div class="nav-grid" data-id="menu">
+        <span></span><span></span><span></span>
+        <span></span><span></span><span></span>
+        <span></span><span></span><span></span>
+      </div>
+    </nav>
+  </header>
+
+  <div class="hero" data-id="hero">
+    <h1 class="hero-title">Lean Force</h1>
+  </div>
+
+  <div class="sub-links">
+    <span class="sub-link" data-id="services">Services</span>
+    <span class="sub-link" data-id="about">About</span>
+    <span class="sub-link" data-id="contact">Contact</span>
+  </div>
+
+  <footer class="footer">
+    <div class="status" data-id="status">Status: System Optimized<sup>21</sup></div>
+    <div class="latency" data-id="latency">Latency: 0.1ms</div>
+  </footer>
+  <a class="scroll-cue" data-id="scroll-cue" href="#about-section">Scroll</a>
+
+</div>
+
+<section class="about-section" id="about-section" data-id="about-section">
+  <div>
+    <p class="about-kicker">About</p>
+    <h2 class="about-title">Human Intent<br>Prediction Layer</h2>
+    <p class="about-lead">
+      Mouse trajectory is interpreted in real time as intent probability.
+      The UI highlights likely next actions while preserving visual quietness.
+    </p>
+  </div>
+  <div class="about-content">
+    <div class="about-grid">
+      <article class="about-card" data-id="about-card-1">
+        <h3 class="about-card-title">Signal Weighting</h3>
+        <p class="about-card-text">Distance, direction, and velocity blend into a single confidence score.</p>
+      </article>
+      <article class="about-card" data-id="about-card-2">
+        <h3 class="about-card-title">Adaptive Curves</h3>
+        <p class="about-card-text">Bezier paths bend with context to keep link lines readable and organic.</p>
+      </article>
+      <article class="about-card" data-id="about-card-3">
+        <h3 class="about-card-title">Priority Targets</h3>
+        <p class="about-card-text">Only major interaction points stay active so attention is never diluted.</p>
+      </article>
+      <article class="about-card" data-id="about-card-4">
+        <h3 class="about-card-title">Live Re-ranking</h3>
+        <p class="about-card-text">Probabilities update continuously as the cursor approaches each element.</p>
+      </article>
+    </div>
+    <a class="about-contact" data-id="about-contact" href="#">Contact</a>
+  </div>
+</section>
+
+<script>
+// ================================================================
+// LEAN FORCE — Cursor Prediction Engine
+// ================================================================
+
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d');
+
+// ── Collect visible clickable targets ──
+let targets = [];
+
+function isElementClickable(el) {
+  const style = window.getComputedStyle(el);
+  if (style.pointerEvents === 'none' || style.visibility === 'hidden' || style.display === 'none') {
+    return false;
+  }
+  if (style.cursor === 'pointer') return true;
+  if (el.matches('a, button, input, select, textarea, summary')) return true;
+  if (el.getAttribute('role') === 'button') return true;
+  if (typeof el.onclick === 'function') return true;
+  return false;
+}
+
+function isInViewport(rect) {
+  return rect.bottom > 0 &&
+    rect.right > 0 &&
+    rect.left < window.innerWidth &&
+    rect.top < window.innerHeight;
+}
+
+const EXCLUDED_IDS = new Set(['lang-jpn', 'lang-eng', 'lang-rus', 'lang-chs']);
+
+function buildTargets() {
+  const clickableEls = Array.from(document.querySelectorAll('[data-id], a, button, [role="button"], [onclick]'))
+    .filter(isElementClickable)
+    .filter(el => !EXCLUDED_IDS.has(el.dataset.id || ''));
+
+  targets = clickableEls
+    .map(el => {
+    const r = el.getBoundingClientRect();
+    return {
+      el,
+      id: el.dataset.id || el.getAttribute('aria-label') || el.textContent?.trim() || 'target',
+      cx: r.left + r.width  / 2,
+      cy: r.top  + r.height / 2,
+      left: r.left,
+      top: r.top,
+      right: r.right,
+      bottom: r.bottom,
+      prob:    0,
+      display: 0,
+    };
+  })
+    .filter(t => isInViewport({ top: t.top, left: t.left, right: t.right, bottom: t.bottom }));
+}
+
+// ── Mouse ──
+const mouse = { x: -999, y: -999, active: false };
+
+document.addEventListener('mousemove', e => {
+  mouse.x = e.clientX;
+  mouse.y = e.clientY;
+  mouse.active = true;
+});
+document.addEventListener('mouseleave', () => { mouse.active = false; });
+
+// ── Resize ──
+function resize() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  buildTargets();
+}
+window.addEventListener('resize', resize);
+// Wait for fonts/layout
+window.addEventListener('load', resize);
+resize();
+
+// ── Probability calculation (inverse distance) ──
+function calcProbs() {
+  if (!mouse.active) return;
+  if (targets.length === 0) return;
+
+  // If cursor is on a target, force deterministic prediction (100%)
+  const hovered = targets.filter(t =>
+    mouse.x >= t.left &&
+    mouse.x <= t.right &&
+    mouse.y >= t.top &&
+    mouse.y <= t.bottom
+  );
+  if (hovered.length > 0) {
+    let winner = hovered[0];
+    if (hovered.length > 1) {
+      winner = hovered.reduce((best, cur) => {
+        const bArea = (best.right - best.left) * (best.bottom - best.top);
+        const cArea = (cur.right - cur.left) * (cur.bottom - cur.top);
+        return cArea < bArea ? cur : best;
+      });
+    }
+    targets.forEach(t => { t.prob = t === winner ? 1 : 0; });
+    return;
+  }
+
+  const scores = targets.map(t => {
+    const dx = t.cx - mouse.x;
+    const dy = t.cy - mouse.y;
+    const d  = Math.sqrt(dx * dx + dy * dy);
+    return 1 / Math.max(d, 8);
+  });
+
+  const total = scores.reduce((a, b) => a + b, 0);
+  if (total <= 0) {
+    const uniform = 1 / targets.length;
+    targets.forEach(t => { t.prob = uniform; });
+    return;
+  }
+  targets.forEach((t, i) => { t.prob = scores[i] / total; });
+}
+
+// ── Bezier control point: bow consistently away from screen center ──
+function controlPoint(from, to) {
+  const mx  = (from.x + to.x) / 2;
+  const my  = (from.y + to.y) / 2;
+  const dx  = to.x - from.x;
+  const dy  = to.y - from.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) return { x: mx, y: my };
+
+  // Perpendicular (rotated 90° CCW)
+  const px = -dy / len;
+  const py =  dx / len;
+
+  // Bow away from screen center
+  const scx = canvas.width  / 2;
+  const scy = canvas.height / 2;
+  const toCenter = (px * (scx - mx) + py * (scy - my));
+  const sign = toCenter > 0 ? -1 : 1;
+
+  const amp = Math.min(len * 0.28, 130);
+  return { x: mx + px * amp * sign, y: my + py * amp * sign };
+}
+
+// ── Point on quadratic bezier at t ──
+function bezierPt(p0, cp, p2, t) {
+  const mt = 1 - t;
+  return {
+    x: mt * mt * p0.x + 2 * mt * t * cp.x + t * t * p2.x,
+    y: mt * mt * p0.y + 2 * mt * t * cp.y + t * t * p2.y,
+  };
+}
+
+// ── Draw ──
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (!mouse.active) {
+    requestAnimationFrame(draw);
+    return;
+  }
+
+  calcProbs();
+  const hasAbsoluteWinner = targets.some(t => t.prob >= 0.999);
+
+  // Lerp display probabilities (but snap when 100% winner exists)
+  targets.forEach(t => {
+    if (hasAbsoluteWinner) {
+      t.display = t.prob;
+    } else {
+      t.display += (t.prob - t.display) * 0.1;
+    }
+  });
+
+  // Draw all visible clickable candidates
+  let visible = [...targets].sort((a, b) => a.display - b.display);
+  if (hasAbsoluteWinner) {
+    visible = visible.filter(t => t.display >= 0.999);
+  }
+  const displayTotal = visible.reduce((sum, t) => sum + t.display, 0);
+  const normalized = visible.map(t => {
+    const p = displayTotal > 0 ? t.display / displayTotal : 0;
+    return { t, p };
+  });
+
+  // Ensure label percentages always sum to exactly 100
+  const rawPercents = normalized.map(item => item.p * 100);
+  const basePercents = rawPercents.map(v => Math.floor(v));
+  let remainder = 100 - basePercents.reduce((a, b) => a + b, 0);
+  const order = rawPercents
+    .map((v, i) => ({ i, frac: v - basePercents[i] }))
+    .sort((a, b) => b.frac - a.frac);
+  for (let i = 0; i < order.length && remainder > 0; i += 1) {
+    basePercents[order[i].i] += 1;
+    remainder -= 1;
+  }
+
+  const from = { x: mouse.x, y: mouse.y };
+
+  normalized.forEach((item, index) => {
+    const t = item.t;
+    const p = item.p;
+
+    const to = { x: t.cx, y: t.cy };
+    const cp = controlPoint(from, to);
+
+    // ── Line ──
+    const strength = Math.pow(Math.max(0, p), 1.35);
+    const alpha = 0.12 + strength * 0.92;
+    const lw    = 0.2 + strength * 2.8;
+
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.quadraticCurveTo(cp.x, cp.y, to.x, to.y);
+    ctx.strokeStyle = `rgba(0,0,0,${alpha.toFixed(3)})`;
+    ctx.lineWidth   = lw;
+    ctx.lineCap     = 'round';
+    ctx.stroke();
+
+    // ── Probability label ──
+    // Place at ~85% along the curve (near element end)
+    const labelPt  = bezierPt(from, cp, to, 0.82);
+    // Tiny perpendicular offset so label doesn't sit on the line
+    const dx  = to.x - from.x;
+    const dy  = to.y - from.y;
+    const len = Math.hypot(dx, dy);
+    const offX = (len > 1 ? -dy / len : 0) * 10;
+    const offY = (len > 1 ?  dx / len : 0) * 10;
+
+    const pct = basePercents[index];
+    if (pct === 0 && !hasAbsoluteWinner) return;
+    const fAlpha = 0.25 + strength * 0.78;
+
+    ctx.font      = `500 12px 'Space Grotesk', sans-serif`;
+    ctx.fillStyle = `rgba(0,0,0,${fAlpha.toFixed(3)})`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${pct}%`, labelPt.x + offX, labelPt.y + offY);
+  });
+
+  // ── Cursor origin dot ──
+  ctx.beginPath();
+  ctx.arc(mouse.x, mouse.y, 2.5, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fill();
+
+  requestAnimationFrame(draw);
+}
+
+draw();
+
+// ── Update target positions on scroll / layout shift ──
+let rafId;
+function scheduleRebuild() {
+  cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(buildTargets);
+}
+window.addEventListener('resize', scheduleRebuild);
+window.addEventListener('scroll', scheduleRebuild, { passive: true });
+setInterval(scheduleRebuild, 700);
+</script>
+</body>
+</html>
