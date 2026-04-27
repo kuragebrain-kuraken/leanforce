@@ -415,11 +415,27 @@ function buildTargets() {
 }
 
 // ── Mouse ──
-const mouse = { x: -999, y: -999, active: false };
+const mouse = { x: -999, y: -999, active: false, vx: 0, vy: 0, lastT: performance.now() };
+const inertia = { x: 0, y: 0 };
 
 document.addEventListener('mousemove', e => {
+  const now = performance.now();
+  const dt = Math.max(1, now - mouse.lastT);
+  const instantVx = (e.clientX - mouse.x) / dt;
+  const instantVy = (e.clientY - mouse.y) / dt;
+  const prevVx = mouse.vx;
+  const prevVy = mouse.vy;
+  // Smooth velocity so the line motion feels organic, not twitchy
+  mouse.vx = mouse.vx * 0.78 + instantVx * 0.22;
+  mouse.vy = mouse.vy * 0.78 + instantVy * 0.22;
+  // Accumulate inertia from velocity change (force on direction change)
+  inertia.x += (mouse.vx - prevVx) * 28;
+  inertia.y += (mouse.vy - prevVy) * 28;
+  inertia.x = Math.max(-3.8, Math.min(3.8, inertia.x));
+  inertia.y = Math.max(-3.8, Math.min(3.8, inertia.y));
   mouse.x = e.clientX;
   mouse.y = e.clientY;
+  mouse.lastT = now;
   mouse.active = true;
 });
 document.addEventListener('mouseleave', () => { mouse.active = false; });
@@ -477,7 +493,8 @@ function calcProbs() {
 }
 
 // ── Bezier control point: bow consistently away from screen center ──
-function controlPoint(from, to) {
+function controlPoint(from, to, options = {}) {
+  const { curlBoost = 0 } = options;
   const mx  = (from.x + to.x) / 2;
   const my  = (from.y + to.y) / 2;
   const dx  = to.x - from.x;
@@ -495,8 +512,25 @@ function controlPoint(from, to) {
   const toCenter = (px * (scx - mx) + py * (scy - my));
   const sign = toCenter > 0 ? -1 : 1;
 
-  const amp = Math.min(len * 0.28, 130);
-  return { x: mx + px * amp * sign, y: my + py * amp * sign };
+  // Distance-based flexibility: far = soft, near = stiff
+  const distFlex = Math.max(0, Math.min(1, (len - 120) / 520));
+  const amp = Math.min(len * (0.18 + 0.42 * distFlex), 90 + 120 * distFlex);
+  const baseX = mx + px * amp * sign;
+  const baseY = my + py * amp * sign;
+
+  // Inertial bend: reacts to cursor motion, then decays naturally
+  const speed = Math.min(Math.hypot(mouse.vx, mouse.vy) * 28, 2.2);
+  const velBend = Math.min(len * 0.11, 38) * speed * (0.25 + 0.95 * distFlex);
+  const inertiaAlongPerp = px * inertia.x + py * inertia.y;
+  const inertiaBend = Math.max(-2.2, Math.min(2.2, inertiaAlongPerp));
+  const tx = dx / len;
+  const ty = dy / len;
+  const curlAmt = curlBoost * distFlex * Math.min(26 + len * 0.24, 92);
+
+  return {
+    x: baseX + dx * 0.12 * speed * distFlex + px * velBend * inertiaBend * 0.72 + px * curlAmt * 1.08 - tx * curlAmt * 0.36,
+    y: baseY + dy * 0.12 * speed * distFlex + py * velBend * sign * (0.42 + 0.52 * inertiaBend) + py * curlAmt * 1.08 - ty * curlAmt * 0.36,
+  };
 }
 
 // ── Point on quadratic bezier at t ──
@@ -511,6 +545,8 @@ function bezierPt(p0, cp, p2, t) {
 // ── Draw ──
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  inertia.x *= 0.9;
+  inertia.y *= 0.9;
 
   if (!mouse.active) {
     requestAnimationFrame(draw);
@@ -553,13 +589,25 @@ function draw() {
   }
 
   const from = { x: mouse.x, y: mouse.y };
+  let curlIndex = -1;
+  let farthestDistance = 0;
+  normalized.forEach((item, idx) => {
+    const dx = item.t.cx - from.x;
+    const dy = item.t.cy - from.y;
+    const d = Math.hypot(dx, dy);
+    if (d > farthestDistance) {
+      farthestDistance = d;
+      curlIndex = idx;
+    }
+  });
+  if (farthestDistance < 240) curlIndex = -1;
 
   normalized.forEach((item, index) => {
     const t = item.t;
     const p = item.p;
 
     const to = { x: t.cx, y: t.cy };
-    const cp = controlPoint(from, to);
+    const cp = controlPoint(from, to, { curlBoost: index === curlIndex ? 1 : 0 });
 
     // ── Line ──
     const strength = Math.pow(Math.max(0, p), 1.35);
@@ -588,7 +636,7 @@ function draw() {
     if (pct === 0 && !hasAbsoluteWinner) return;
     const fAlpha = 0.25 + strength * 0.78;
 
-    ctx.font      = `500 12px 'Space Grotesk', sans-serif`;
+    ctx.font      = `500 18px 'Space Grotesk', sans-serif`;
     ctx.fillStyle = `rgba(0,0,0,${fAlpha.toFixed(3)})`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
